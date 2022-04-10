@@ -14,6 +14,12 @@ module(bookmark,
 :- use_module(library(xpath)).
 :- use_module(url).
 
+:- dynamic last_url/1.
+
+delete_url(URL) :-
+    \+ var(URL),
+    retractall(url(URL, _, _, _, _, _)).
+
 lookup(URL) :-
         catch(
             http_open(URL, In, [status_code(Code), final_url(FinalURL)]),
@@ -22,6 +28,7 @@ lookup(URL) :-
                 term_string(Error, ErrorString),
                 writeln(ErrorString),
                 update(URL, URL, -1, ErrorString, no),
+                last_url_seen(URL),
                 www_open_url(URL),
                 !,
                 fail
@@ -45,6 +52,7 @@ lookup(URL) :-
         atom_string(TitleAtom, Title),
         atom_string(DescriptionAtom, Description),
         update(URL, FinalURL, Code, Title, Description),
+        last_url_seen(FinalURL),
         www_open_url(FinalURL).
 
 random_lookup :-
@@ -74,17 +82,22 @@ get_domain(URL, Domain) :-
     uri_components(URL, uri_components(Scheme, Authority, _, _, _)),
     atomic_list_concat([Scheme, '://', Authority], Domain).
 
+last_url_seen(URL) :-
+    retractall(last_url(_)),
+    assertz(last_url(URL)).
+
 update(URL, FinalURL, Code, Title, Description) :-
-        (
-            url(URL, OldCount, _, _, _, _),
-            NewCount is OldCount + 1,
-            !;
-            NewCount is 1
-        ),
-        date(Date),
-        (
-            retract(url(URL, _, _, _, _, _)),
-            !;
-            true
-        ),
-        assertz(url(FinalURL, NewCount, Code, Date, Title, Description)).
+    \+ var(URL),
+    (
+        url(URL, OldCount, _, _, _, _),
+        NewCount is OldCount + 1,
+        !;
+        NewCount is 1
+    ),
+    date(Date),
+    (
+        retractall(url(URL, _, _, _, _, _)),
+        !;
+        true
+    ),
+    assertz(url(FinalURL, NewCount, Code, Date, Title, Description)).
