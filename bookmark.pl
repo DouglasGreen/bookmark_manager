@@ -15,35 +15,36 @@ module(bookmark,
 :- use_module(url).
 
 lookup(URL) :-
-        http_open(URL, In, [status_code(Code), final_url(FinalURL)]),
+        catch(
+            http_open(URL, In, [status_code(Code), final_url(FinalURL)]),
+            Error,
+            (
+                term_string(Error, ErrorString),
+                writeln(ErrorString),
+                update(URL, URL, -1, ErrorString, no),
+                www_open_url(URL),
+                !,
+                fail
+            )
+        ),
         call_cleanup(
             load_html(In, DOM, []),
-            close(In)),
+            close(In)
+        ),
         (
-            xpath(DOM, //title, element(title, _, [Title])),
+            xpath(DOM, //title, element(title, _, [TitleAtom])),
             !;
             Title = no
         ),
         (
             xpath(DOM, //meta(@name=description), element(meta, DescAttribs, _)),
-            get_attrib(content, DescAttribs, Description),
+            get_attrib(content, DescAttribs, DescriptionAtom),
             !;
             Description = no
         ),
-        (
-            url(URL, OldCount, _, _, _, _),
-            NewCount is OldCount + 1,
-            !;
-            NewCount is 1
-        ),
-        date(Date),
-        (
-            retract(url(URL, _, _, _, _, _)),
-            !;
-            true
-        ),
-        assertz(url(URL, NewCount, Code, Date, Title, Description)),
-        writeln(url(FinalURL, NewCount, Code, Date, Title, Description)),
+        atom_string(TitleAtom, Title),
+        atom_string(DescriptionAtom, Description),
+        update(URL, FinalURL, Code, Title, Description),
         www_open_url(FinalURL).
 
 random_lookup :-
@@ -72,3 +73,18 @@ get_attrib(Name, [_|Attribs], Value) :-
 get_domain(URL, Domain) :-
     uri_components(URL, uri_components(Scheme, Authority, _, _, _)),
     atomic_list_concat([Scheme, '://', Authority], Domain).
+
+update(URL, FinalURL, Code, Title, Description) :-
+        (
+            url(URL, OldCount, _, _, _, _),
+            NewCount is OldCount + 1,
+            !;
+            NewCount is 1
+        ),
+        date(Date),
+        (
+            retract(url(URL, _, _, _, _, _)),
+            !;
+            true
+        ),
+        assertz(url(FinalURL, NewCount, Code, Date, Title, Description)).
