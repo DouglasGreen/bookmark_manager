@@ -96,8 +96,10 @@ set_category(URL, Category) :-
 
 get_attrib(_, [], no) :-
     !.
+
 get_attrib(Name, [Name=Value|_], Value) :-
     !.
+
 get_attrib(Name, [_|Attribs], Value) :-
     get_attrib(Name, Attribs, Value).
 
