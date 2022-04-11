@@ -7,7 +7,8 @@ module(bookmark,
     [
         lookup/1,
         random_lookup/0,
-        save/0
+        save/0,
+        search/1
     ]).
 
 :- use_module(library(http/http_open)).
@@ -71,6 +72,10 @@ save :-
     listing(url),
     told.
 
+search(Word) :-
+    setof(String, Word^search_word(Word, String), Strings),
+    maplist(writeln, Strings).
+
 get_attrib(_, [], no) :-
     !.
 get_attrib(Name, [Name=Value|_], Value) :-
@@ -85,6 +90,16 @@ get_domain(URL, Domain) :-
 last_url_seen(URL) :-
     retractall(last_url(_)),
     assertz(last_url(URL)).
+
+search_word(Word, String) :-
+    url(URL, _, _, _, Title, Description),
+    string_lower(URL, LowURL),
+    string_lower(Title, LowTitle),
+    string_lower(Description, LowDescription),
+    string_lower(Word, LowWord),
+    atomics_to_string([LowURL, LowTitle, LowDescription], ' | ', LowString),
+    sub_string(LowString, _, _, _, LowWord),
+    atomics_to_string([URL, Title, Description], ' | ', String).
 
 update(URL, FinalURL, Code, Title, Description) :-
     \+ var(URL),
