@@ -9,10 +9,11 @@ module(bookmark,
         delete_url/1,
         list_category/1,
         lookup/1,
+        print_url_search/1,
         random_lookup/0,
         random_lookup/1,
         save/0,
-        search_all/1,
+        search_urls/1,
         set_category_by_search/2
     ]).
 
@@ -74,6 +75,13 @@ lookup(URL) :-
         last_url_seen(FinalURL),
         www_open_url(FinalURL).
 
+print_url_search(Word) :-
+    search_urls(Word, URLs),
+    sort(URLs, Sorted),
+    member(URL, Sorted),
+    writeln(URL),
+    fail.
+
 random_lookup :-
     findall(URL, url(URL, _, _, _, _, _, _), URLs),
     random_permutation(URLs, Shuffled),
@@ -97,7 +105,7 @@ save :-
     listing(url),
     told.
 
-search_all(Word, URLs) :-
+search_urls(Word, URLs) :-
     setof(URL, Description^Title^Category^Word^search_word(Word, URL, Category, Title, Description), URLs).
 
 set_category(URL, Category) :-
@@ -105,7 +113,7 @@ set_category(URL, Category) :-
     assertz(url(URL, Count, Code, Date, Category, Title, Description)).
 
 set_category_by_search(Category, Term) :-
-    search_all(Term, URLs),
+    search_urls(Term, URLs),
     member(URL, URLs),
     category(URL, no),
     writeln(URL),
