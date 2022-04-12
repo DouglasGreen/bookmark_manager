@@ -7,11 +7,13 @@ module(bookmark,
     [
         categories/1,
         delete_url/1,
+        list_category/1,
         lookup/1,
         random_lookup/0,
         random_lookup/1,
         save/0,
-        search/1
+        search_all/1,
+        set_category_by_search/2
     ]).
 
 :- use_module(library(http/http_open)).
@@ -24,9 +26,18 @@ categories(Categories) :-
     findall(Category, url(_, _, _, _, Category, _, _), CatDupes),
     sort(CatDupes, Categories).
 
+category(URL, Category) :-
+    url(URL, _, _, _, Category, _, _).
+
 delete_url(URL) :-
     \+ var(URL),
     retractall(url(URL, _, _, _, _, _, _)).
+
+list_category(Category) :-
+    setof(URL, category(URL, Category), URLs),
+    member(URL, URLs),
+    writeln(URL),
+    fail.
 
 lookup(URL) :-
         catch(
@@ -86,13 +97,20 @@ save :-
     listing(url),
     told.
 
-search(Word) :-
-    setof(String, Word^search_word(Word, String), Strings),
-    maplist(writeln, Strings).
+search_all(Word, URLs) :-
+    setof(URL, Description^Title^Category^Word^search_word(Word, URL, Category, Title, Description), URLs).
 
 set_category(URL, Category) :-
     retract(url(URL, Count, Code, Date, _, Title, Description)),
     assertz(url(URL, Count, Code, Date, Category, Title, Description)).
+
+set_category_by_search(Category, Term) :-
+    search_all(Term, URLs),
+    member(URL, URLs),
+    category(URL, no),
+    writeln(URL),
+    set_category(URL, Category),
+    fail.
 
 get_attrib(_, [], no) :-
     !.
@@ -111,15 +129,14 @@ last_url_seen(URL) :-
     retractall(last_url(_)),
     assertz(last_url(URL)).
 
-search_word(Word, String) :-
+search_word(Word, URL, Category, Title, Description) :-
     url(URL, _, _, _, Category, Title, Description),
     string_lower(URL, LowURL),
     string_lower(Title, LowTitle),
     string_lower(Description, LowDescription),
     string_lower(Word, LowWord),
     atomics_to_string([LowURL, Category, LowTitle, LowDescription], ' | ', LowString),
-    sub_string(LowString, _, _, _, LowWord),
-    atomics_to_string([URL, Category, Title, Description], ' | ', String).
+    sub_string(LowString, _, _, _, LowWord).
 
 update(URL, FinalURL, Code, Title, Description) :-
     \+ var(URL),
