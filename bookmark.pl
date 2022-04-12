@@ -149,7 +149,12 @@ update(URL, FinalURL, Code, Title, Description) :-
     ),
     date(Date),
     (
-        retractall(url(URL, _, _, _, _, _, _)),
+        % Delete variations with or without trailing slash.
+        delete_url(URL),
+        string_concat(URL, "/", URL1),
+        delete_url(URL1),
+        string_concat(URL2, "/", URL),
+        delete_url(URL2),
         !;
         true
     ),
