@@ -6,14 +6,18 @@
 module(bookmark,
     [
         categories/1,
+        category/2,
         delete_url/1,
-        list_category/1,
         lookup/1,
+        print_categories/0,
+        print_category/1,
+        print_url_categories/0,
         print_url_search/1,
         random_lookup/0,
         random_lookup/1,
         save/0,
         search_urls/1,
+        set_category_by_search/1,
         set_category_by_search/2
     ]).
 
@@ -33,12 +37,6 @@ category(URL, Category) :-
 delete_url(URL) :-
     \+ var(URL),
     retractall(url(URL, _, _, _, _, _, _)).
-
-list_category(Category) :-
-    setof(URL, category(URL, Category), URLs),
-    member(URL, URLs),
-    writeln(URL),
-    fail.
 
 lookup(URL) :-
         catch(
@@ -71,9 +69,32 @@ lookup(URL) :-
         ),
         atom_string(TitleAtom, Title),
         atom_string(DescriptionAtom, Description),
+        writeln(FinalURL),
+        writeln(Title),
+        writeln(Description),
         update(URL, FinalURL, Code, Title, Description),
         last_url_seen(FinalURL),
         www_open_url(FinalURL).
+
+print_categories :-
+    categories(Categories),
+    member(Category, Categories),
+    writeln(Category),
+    fail.
+
+print_category(Category) :-
+    setof(URL, category(URL, Category), URLs),
+    member(URL, URLs),
+    writeln(URL),
+    fail.
+
+print_url_categories :-
+    categories(Categories),
+    member(Category, Categories),
+    format("\n~w:\n", [Category]),
+    print_category(Category),
+    nl,
+    fail.
 
 print_url_search(Word) :-
     search_urls(Word, URLs),
@@ -111,6 +132,9 @@ search_urls(Word, URLs) :-
 set_category(URL, Category) :-
     retract(url(URL, Count, Code, Date, _, Title, Description)),
     assertz(url(URL, Count, Code, Date, Category, Title, Description)).
+
+set_category_by_search(Category) :-
+    set_category_by_search(Category, Category).
 
 set_category_by_search(Category, Term) :-
     search_urls(Term, URLs),
