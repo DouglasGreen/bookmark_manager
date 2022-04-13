@@ -6,19 +6,19 @@
 module(bookmark,
     [
         categories/1,
-        category/2,
         delete_url/1,
-        lookup/1,
+        lookup_random_url/0,
+        lookup_random_url/1,
+        lookup_url/1,
         print_categories/0,
         print_category/1,
         print_url_categories/0,
         print_url_search/1,
-        random_lookup/0,
-        random_lookup/1,
-        save/0,
+        save_file/0,
         search_urls/1,
         set_category_by_search/1,
-        set_category_by_search/2
+        set_category_by_search/2,
+        url_category/2
     ]).
 
 :- use_module(library(http/http_open)).
@@ -31,21 +31,18 @@ categories(Categories) :-
     findall(Category, url(_, _, _, _, Category, _, _), CatDupes),
     sort(CatDupes, Categories).
 
-category(URL, Category) :-
-    url(URL, _, _, _, Category, _, _).
-
 delete_url(URL) :-
     \+ var(URL),
     retractall(url(URL, _, _, _, _, _, _)).
 
-lookup(URL) :-
+lookup_url(URL) :-
         catch(
             http_open(URL, In, [status_code(Code), final_url(FinalURL)]),
             Error,
             (
                 term_string(Error, ErrorString),
                 writeln(ErrorString),
-                update(URL, URL, -1, ErrorString, no),
+                update_url(URL, URL, -1, ErrorString, no),
                 last_url_seen(URL),
                 www_open_url(URL),
                 !,
@@ -72,9 +69,23 @@ lookup(URL) :-
         writeln(FinalURL),
         writeln(Title),
         writeln(Description),
-        update(URL, FinalURL, Code, Title, Description),
+        update_url(URL, FinalURL, Code, Title, Description),
         last_url_seen(FinalURL),
         www_open_url(FinalURL).
+
+lookup_random_url :-
+    findall(URL, url(URL, _, _, _, _, _, _), URLs),
+    random_permutation(URLs, Shuffled),
+    member(URL, Shuffled),
+    format("Trying ~w...\n", [URL]),
+    lookup_url(URL).
+
+lookup_random_url(Category) :-
+    findall(URL, url(URL, _, _, _, Category, _, _), URLs),
+    random_permutation(URLs, Shuffled),
+    member(URL, Shuffled),
+    format("Trying ~w...\n", [URL]),
+    lookup_url(URL).
 
 print_categories :-
     categories(Categories),
@@ -83,7 +94,7 @@ print_categories :-
     fail.
 
 print_category(Category) :-
-    setof(URL, category(URL, Category), URLs),
+    setof(URL, url_category(URL, Category), URLs),
     member(URL, URLs),
     writeln(URL),
     fail.
@@ -103,21 +114,7 @@ print_url_search(Word) :-
     writeln(URL),
     fail.
 
-random_lookup :-
-    findall(URL, url(URL, _, _, _, _, _, _), URLs),
-    random_permutation(URLs, Shuffled),
-    member(URL, Shuffled),
-    format("Trying ~w...\n", [URL]),
-    lookup(URL).
-
-random_lookup(Category) :-
-    findall(URL, url(URL, _, _, _, Category, _, _), URLs),
-    random_permutation(URLs, Shuffled),
-    member(URL, Shuffled),
-    format("Trying ~w...\n", [URL]),
-    lookup(URL).
-
-save :-
+save_file :-
     tell('url.pl'),
     writeln(":- module(url, [url/7])."),
     nl,
@@ -139,10 +136,13 @@ set_category_by_search(Category) :-
 set_category_by_search(Category, Term) :-
     search_urls(Term, URLs),
     member(URL, URLs),
-    category(URL, no),
+    url_category(URL, no),
     writeln(URL),
     set_category(URL, Category),
     fail.
+
+url_category(URL, Category) :-
+    url(URL, _, _, _, Category, _, _).
 
 get_attrib(_, [], no) :-
     !.
@@ -170,7 +170,7 @@ search_word(Word, URL, Category, Title, Description) :-
     atomics_to_string([LowURL, Category, LowTitle, LowDescription], ' | ', LowString),
     sub_string(LowString, _, _, _, LowWord).
 
-update(URL, FinalURL, Code, Title, Description) :-
+update_url(URL, FinalURL, Code, Title, Description) :-
     \+ var(URL),
     (
         url(URL, OldCount, _, _, Category, _, _),
