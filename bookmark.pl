@@ -9,13 +9,14 @@ module(bookmark,
         delete_url/1,
         lookup_random_url/0,
         lookup_random_url/1,
-        lookup_url/1,
+        lookup_url/2,
+        lookup_url_by_word/1,
         print_categories/0,
         print_category/1,
         print_url_categories/0,
         print_url_search/1,
         save_file/0,
-        search_urls/1,
+        search_word_urls/1,
         set_category_by_search/1,
         set_category_by_search/2,
         url_category/2
@@ -87,6 +88,15 @@ lookup_random_url(Category) :-
     format("Trying ~w...\n", [URL]),
     lookup_url(URL).
 
+lookup_url_by_word(Word) :-
+    search_word_urls(Word, URLs),
+    length(URLs, Length),
+    (
+        Length > 1, writeln("Multiple matches:"), print_url_search(Word), !;
+        Length = 0, writeln("No matches"), !;
+        URLs = [URL], lookup_url(URL)
+    ).
+
 print_categories :-
     categories(Categories),
     member(Category, Categories),
@@ -108,7 +118,7 @@ print_url_categories :-
     fail.
 
 print_url_search(Word) :-
-    search_urls(Word, URLs),
+    search_word_urls(Word, URLs),
     sort(URLs, Sorted),
     member(URL, Sorted),
     writeln(URL),
@@ -123,7 +133,7 @@ save_file :-
     listing(url),
     told.
 
-search_urls(Word, URLs) :-
+search_word_urls(Word, URLs) :-
     setof(URL, Description^Title^Category^Word^search_word(Word, URL, Category, Title, Description), URLs).
 
 set_category(URL, Category) :-
@@ -134,7 +144,7 @@ set_category_by_search(Category) :-
     set_category_by_search(Category, Category).
 
 set_category_by_search(Category, Term) :-
-    search_urls(Term, URLs),
+    search_word_urls(Term, URLs),
     member(URL, URLs),
     url_category(URL, no),
     writeln(URL),
