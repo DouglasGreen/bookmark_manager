@@ -11,6 +11,7 @@ module(bookmark,
         lookup_random_url/1,
         lookup_url/2,
         lookup_url_by_word/1,
+        lookup_urls_in_category/1,
         print_categories/0,
         print_category/1,
         print_url_categories/0,
@@ -96,6 +97,11 @@ lookup_url_by_word(Word) :-
         Length = 0, writeln("No matches"), !;
         URLs = [URL], lookup_url(URL)
     ).
+
+lookup_urls_in_category(Category) :-
+    url_category(URL, Category),
+    lookup_url(URL),
+    fail.
 
 print_categories :-
     categories(Categories),
