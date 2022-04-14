@@ -15,6 +15,7 @@ module(bookmark,
         print_categories/0,
         print_category/1,
         print_url_categories/0,
+        print_url_hits/1,
         print_url_search/1,
         save_file/0,
         search_word_urls/1,
@@ -121,6 +122,12 @@ print_url_categories :-
     format("\n~w:\n", [Category]),
     print_category(Category),
     nl,
+    fail.
+
+print_url_hits(Floor) :-
+    url(URL, Count, _, date(Y, M, D), _, _, _),
+    Count >= Floor,
+    format("~w - ~d hits as of ~d-~d-~d\n", [URL, Count, Y, M, D]),
     fail.
 
 print_url_search(Word) :-
