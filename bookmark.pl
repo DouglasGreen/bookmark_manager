@@ -44,7 +44,7 @@ delete_url(URL) :-
 lookup_url(URL) :-
     must_be(string, URL),
     catch(
-        http_open(URL, In, [status_code(Code), final_url(FinalURL)]),
+        http_open(URL, In, [status_code(Code), final_url(FinalURLAtom)]),
         Error,
         (
             term_string(Error, ErrorString),
@@ -73,6 +73,7 @@ lookup_url(URL) :-
     ),
     atom_string(TitleAtom, Title),
     atom_string(DescriptionAtom, Description),
+    atom_string(FinalURLAtom, FinalURL),
     writeln(FinalURL),
     writeln(Title),
     writeln(Description),
@@ -224,7 +225,11 @@ search_word(Word, URL, Category, Title, Description) :-
     sub_string(LowString, _, _, _, LowWord).
 
 update_url(URL, FinalURL, Code, Title, Description) :-
-    \+ var(URL),
+    must_be(string, URL),
+    must_be(string, FinalURL),
+    must_be(integer, Code),
+    must_be(string, Title),
+    must_be(string, Description),
     (
         url(URL, OldCount, _, _, Category, _, _),
         NewCount is OldCount + 1,
@@ -233,15 +238,16 @@ update_url(URL, FinalURL, Code, Title, Description) :-
         Category = no
     ),
     date(Date),
+    normal_url(FinalURL, NormalURL),
+    !,
     (
         % Delete variations with or without trailing slash.
-        delete_url(URL),
-        string_concat(URL, "/", URL1),
-        delete_url(URL1),
-        string_concat(URL2, "/", URL),
-        delete_url(URL2),
+        member(OldURL, [URL, NormalURL, FinalURL]),
+        delete_url(OldURL),
+        string_concat(OldURL, "/", OldURLWithSlash),
+        delete_url(OldURLWithSlash),
+        fail,
         !;
         true
     ),
-    normal_url(FinalURL, NormalURL),
     assertz(url(NormalURL, NewCount, Code, Date, Category, Title, Description)).
