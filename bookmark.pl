@@ -19,6 +19,7 @@ module(bookmark,
         print_url_search/1,
         save_file/0,
         search_word_urls/1,
+        set_url_category/2,
         set_category_by_search/1,
         set_category_by_search/2,
         url_category/2
@@ -35,46 +36,48 @@ categories(Categories) :-
     sort(CatDupes, Categories).
 
 delete_url(URL) :-
+    must_be(string, URL),
     \+ var(URL),
     retractall(url(URL, _, _, _, _, _, _)).
 
 lookup_url(URL) :-
-        catch(
-            http_open(URL, In, [status_code(Code), final_url(FinalURL)]),
-            Error,
-            (
-                term_string(Error, ErrorString),
-                writeln(ErrorString),
-                update_url(URL, URL, -1, ErrorString, no),
-                last_url_seen(URL),
-                www_open_url(URL),
-                !,
-                fail
-            )
-        ),
-        call_cleanup(
-            load_html(In, DOM, []),
-            close(In)
-        ),
+    must_be(string, URL),
+    catch(
+        http_open(URL, In, [status_code(Code), final_url(FinalURL)]),
+        Error,
         (
-            xpath(DOM, //title, element(title, _, [TitleAtom])),
-            !;
-            Title = no
-        ),
-        (
-            xpath(DOM, //meta(@name=description), element(meta, DescAttribs, _)),
-            get_attrib(content, DescAttribs, DescriptionAtom),
-            !;
-            Description = no
-        ),
-        atom_string(TitleAtom, Title),
-        atom_string(DescriptionAtom, Description),
-        writeln(FinalURL),
-        writeln(Title),
-        writeln(Description),
-        update_url(URL, FinalURL, Code, Title, Description),
-        last_url_seen(FinalURL),
-        www_open_url(FinalURL).
+            term_string(Error, ErrorString),
+            writeln(ErrorString),
+            update_url(URL, URL, -1, ErrorString, no),
+            last_url_seen(URL),
+            www_open_url(URL),
+            !,
+            fail
+        )
+    ),
+    call_cleanup(
+        load_html(In, DOM, []),
+        close(In)
+    ),
+    (
+        xpath(DOM, //title, element(title, _, [TitleAtom])),
+        !;
+        Title = no
+    ),
+    (
+        xpath(DOM, //meta(@name=description), element(meta, DescAttribs, _)),
+        get_attrib(content, DescAttribs, DescriptionAtom),
+        !;
+        Description = no
+    ),
+    atom_string(TitleAtom, Title),
+    atom_string(DescriptionAtom, Description),
+    writeln(FinalURL),
+    writeln(Title),
+    writeln(Description),
+    update_url(URL, FinalURL, Code, Title, Description),
+    last_url_seen(FinalURL),
+    www_open_url(FinalURL).
 
 lookup_random_url :-
     findall(URL, url(URL, _, _, _, _, _, _), URLs),
@@ -84,6 +87,7 @@ lookup_random_url :-
     lookup_url(URL).
 
 lookup_random_url(Category) :-
+    must_be(atom, Category),
     findall(URL, url(URL, _, _, _, Category, _, _), URLs),
     random_permutation(URLs, Shuffled),
     member(URL, Shuffled),
@@ -91,6 +95,7 @@ lookup_random_url(Category) :-
     lookup_url(URL).
 
 lookup_url_by_word(Word) :-
+    must_be(string, Word),
     search_word_urls(Word, URLs),
     length(URLs, Length),
     (
@@ -100,6 +105,7 @@ lookup_url_by_word(Word) :-
     ).
 
 lookup_urls_in_category(Category) :-
+    must_be(atom, Category),
     url_category(URL, Category),
     lookup_url(URL),
     fail.
@@ -111,6 +117,7 @@ print_categories :-
     fail.
 
 print_category(Category) :-
+    must_be(atom, Category),
     setof(URL, url_category(URL, Category), URLs),
     member(URL, URLs),
     writeln(URL),
@@ -125,12 +132,14 @@ print_url_categories :-
     fail.
 
 print_url_hits(Floor) :-
+    must_be(integer, Floor),
     url(URL, Count, _, date(Y, M, D), _, _, _),
     Count >= Floor,
     format("~w - ~d hits as of ~d-~d-~d\n", [URL, Count, Y, M, D]),
     fail.
 
 print_url_search(Word) :-
+    must_be(string, Word),
     search_word_urls(Word, URLs),
     sort(URLs, Sorted),
     member(URL, Sorted),
@@ -147,22 +156,29 @@ save_file :-
     told.
 
 search_word_urls(Word, URLs) :-
+    must_be(string, Word),
+    must_be(var, URLs),
     setof(URL, Description^Title^Category^Word^search_word(Word, URL, Category, Title, Description), URLs).
 
-set_category(URL, Category) :-
-    retract(url(URL, Count, Code, Date, _, Title, Description)),
-    assertz(url(URL, Count, Code, Date, Category, Title, Description)).
-
 set_category_by_search(Category) :-
+    must_be(atom, Category),
     set_category_by_search(Category, Category).
 
 set_category_by_search(Category, Term) :-
+    must_be(atom, Category),
+    must_be(string, Term),
     search_word_urls(Term, URLs),
     member(URL, URLs),
     url_category(URL, no),
     writeln(URL),
-    set_category(URL, Category),
+    set_url_category(URL, Category),
     fail.
+
+set_url_category(URL, Category) :-
+    must_be(string, URL),
+    must_be(atom, Category),
+    retract(url(URL, Count, Code, Date, _, Title, Description)),
+    assertz(url(URL, Count, Code, Date, Category, Title, Description)).
 
 url_category(URL, Category) :-
     url(URL, _, _, _, Category, _, _).
