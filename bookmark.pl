@@ -13,17 +13,19 @@ module(bookmark,
         lookup_url_by_search/1,
         lookup_urls_in_category/1,
         normal_url/2,
+        print_all_url_categories/0,
         print_categories/0,
-        print_category/1,
-        print_url_categories/0,
         print_url_hits/1,
         print_url_search/1,
+        print_urls_in_category/1,
+        rename_category/2,
         save_file/0,
         search_word_urls/1,
         set_url_category/2,
         set_category_by_search/1,
         set_category_by_search/2,
-        url_category/2
+        url_category/2,
+        url_domain/2
     ]).
 
 :- use_module(library(http/http_open)).
@@ -124,25 +126,25 @@ normal_url(URL, NormalURL) :-
     uri_components(NormalURLAtom, uri_components(Scheme, Authority, NewPath, Search, Fragment)),
     atom_string(NormalURLAtom, NormalURL).
 
+print_all_url_categories :-
+    categories(Categories),
+    member(Category, Categories),
+    format("\n~w:\n", [Category]),
+    print_urls_in_category(Category),
+    nl,
+    fail.
+
 print_categories :-
     categories(Categories),
     member(Category, Categories),
     writeln(Category),
     fail.
 
-print_category(Category) :-
+print_urls_in_category(Category) :-
     must_be(atom, Category),
     setof(URL, url_category(URL, Category), URLs),
     member(URL, URLs),
     writeln(URL),
-    fail.
-
-print_url_categories :-
-    categories(Categories),
-    member(Category, Categories),
-    format("\n~w:\n", [Category]),
-    print_category(Category),
-    nl,
     fail.
 
 print_url_hits(Floor) :-
@@ -161,6 +163,16 @@ print_url_search(Word) :-
     format("~w (~w)\n", [URL, Category]),
     fail.
 
+rename_category(OldName, NewName) :-
+    must_be(atom, OldName),
+    must_be(atom, NewName),
+    retract(url(URL, Count, Code, Date, OldName, Title, Description)),
+    assertz(url(URL, Count, Code, Date, NewName, Title, Description)),
+    fail.
+
+rename_category(_, _) :-
+    true.
+
 save_file :-
     tell('url.pl'),
     writeln(":- module(url, [url/7])."),
@@ -177,7 +189,8 @@ search_word_urls(Word, URLs) :-
 
 set_category_by_search(Category) :-
     must_be(atom, Category),
-    set_category_by_search(Category, Category).
+    atom_string(Category, Term),
+    set_category_by_search(Category, Term).
 
 set_category_by_search(Category, Term) :-
     must_be(atom, Category),
@@ -198,6 +211,10 @@ set_url_category(URL, Category) :-
 url_category(URL, Category) :-
     url(URL, _, _, _, Category, _, _).
 
+url_domain(URL, Domain) :-
+    uri_components(URL, uri_components(_, DomainAtom, _, _, _)),
+    atom_string(DomainAtom, Domain).
+
 get_attrib(_, [], no) :-
     !.
 
@@ -206,10 +223,6 @@ get_attrib(Name, [Name=Value|_], Value) :-
 
 get_attrib(Name, [_|Attribs], Value) :-
     get_attrib(Name, Attribs, Value).
-
-get_domain(URL, Domain) :-
-    uri_components(URL, uri_components(Scheme, Authority, _, _, _)),
-    atomic_list_concat([Scheme, '://', Authority], Domain).
 
 last_url_seen(URL) :-
     retractall(last_url(_)),
