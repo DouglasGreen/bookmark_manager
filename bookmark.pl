@@ -12,6 +12,7 @@ module(bookmark,
         lookup_url/2,
         lookup_url_by_word/1,
         lookup_urls_in_category/1,
+        normal_url/2,
         print_categories/0,
         print_category/1,
         print_url_categories/0,
@@ -110,6 +111,18 @@ lookup_urls_in_category(Category) :-
     lookup_url(URL),
     fail.
 
+normal_url(URL, NormalURL) :-
+    uri_normalized(URL, URI),
+    uri_components(URI, uri_components(Scheme, Authority, OldPath, Search, Fragment)),
+    (
+        OldPath = '/',
+        NewPath = '',
+        !;
+        NewPath = OldPath
+    ),
+    uri_components(NormalURLAtom, uri_components(Scheme, Authority, NewPath, Search, Fragment)),
+    atom_string(NormalURLAtom, NormalURL).
+
 print_categories :-
     categories(Categories),
     member(Category, Categories),
@@ -143,7 +156,8 @@ print_url_search(Word) :-
     search_word_urls(Word, URLs),
     sort(URLs, Sorted),
     member(URL, Sorted),
-    writeln(URL),
+    url_category(URL, Category),
+    format("~w (~w)\n", [URL, Category]),
     fail.
 
 save_file :-
@@ -229,4 +243,5 @@ update_url(URL, FinalURL, Code, Title, Description) :-
         !;
         true
     ),
-    assertz(url(FinalURL, NewCount, Code, Date, Category, Title, Description)).
+    normal_url(FinalURL, NormalURL),
+    assertz(url(NormalURL, NewCount, Code, Date, Category, Title, Description)).
