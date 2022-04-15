@@ -10,7 +10,7 @@ module(bookmark,
         lookup_random_url/0,
         lookup_random_url/1,
         lookup_url/2,
-        lookup_url_by_word/1,
+        lookup_url_by_search/1,
         lookup_urls_in_category/1,
         normal_url/2,
         print_categories/0,
@@ -96,7 +96,7 @@ lookup_random_url(Category) :-
     format("Trying ~w...\n", [URL]),
     lookup_url(URL).
 
-lookup_url_by_word(Word) :-
+lookup_url_by_search(Word) :-
     must_be(string, Word),
     search_word_urls(Word, URLs),
     length(URLs, Length),
