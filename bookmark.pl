@@ -18,6 +18,7 @@ module(bookmark,
         print_url_hits/1,
         print_url_search/1,
         print_urls_in_category/1,
+        remove_dupes/0,
         rename_category/2,
         save_file/0,
         search_word_urls/1,
@@ -51,7 +52,7 @@ lookup_url(URL) :-
         (
             term_string(Error, ErrorString),
             writeln(ErrorString),
-            update_url(URL, URL, -1, ErrorString, no),
+            update_url(URL, URL, -1, ErrorString, "no"),
             last_url_seen(URL),
             www_open_url(URL),
             !,
@@ -65,13 +66,13 @@ lookup_url(URL) :-
     (
         xpath(DOM, //title, element(title, _, [TitleAtom])),
         !;
-        Title = no
+        Title = "no"
     ),
     (
         xpath(DOM, //meta(@name=description), element(meta, DescAttribs, _)),
         get_attrib(content, DescAttribs, DescriptionAtom),
         !;
-        Description = no
+        Description = "no"
     ),
     atom_string(TitleAtom, Title),
     atom_string(DescriptionAtom, Description),
@@ -163,6 +164,18 @@ print_url_search(Word) :-
     format("~w (~w)\n", [URL, Category]),
     fail.
 
+remove_dupes :-
+    url(URL, Count1, Code1, Date1, Category1, Title1, Description1),
+    url(URL, Count2, _, Date2, Category2, _, _),
+    [Count1, Date1, Category1] \= [Count2, Date2, Category2],
+    writeln(URL),
+    delete_url(URL),
+    NewCount is Count1 + Count2,
+    assertz(url(URL, NewCount, Code1, Date1, Category1, Title1, Description1)),
+    fail.
+
+remove_dupes.
+
 rename_category(OldName, NewName) :-
     must_be(atom, OldName),
     must_be(atom, NewName),
@@ -195,11 +208,17 @@ set_category_by_search(Category) :-
 set_category_by_search(Category, Term) :-
     must_be(atom, Category),
     must_be(string, Term),
+    writeln("Type Y to set or N to skip."),
     search_word_urls(Term, URLs),
     member(URL, URLs),
     url_category(URL, no),
-    writeln(URL),
-    set_url_category(URL, Category),
+    format("~w?\n", [URL]),
+    read_user_char(Low),
+    (
+        Low = 'y',
+        set_url_category(URL, Category);
+        fail
+    ),
     fail.
 
 set_url_category(URL, Category) :-
@@ -212,6 +231,7 @@ url_category(URL, Category) :-
     url(URL, _, _, _, Category, _, _).
 
 url_domain(URL, Domain) :-
+    url(URL, _, _, _, _, _, _),
     uri_components(URL, uri_components(_, DomainAtom, _, _, _)),
     atom_string(DomainAtom, Domain).
 
@@ -228,7 +248,13 @@ last_url_seen(URL) :-
     retractall(last_url(_)),
     assertz(last_url(URL)).
 
+read_user_char(Low) :-
+    get_single_char(Code),
+    char_code(Char, Code),
+    downcase_atom(Char, Low).
+
 search_word(Word, URL, Category, Title, Description) :-
+    must_be(string, Word),
     url(URL, _, _, _, Category, Title, Description),
     string_lower(URL, LowURL),
     string_lower(Title, LowTitle),
