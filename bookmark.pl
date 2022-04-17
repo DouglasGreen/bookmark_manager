@@ -9,7 +9,7 @@ module(bookmark,
         delete_url/1,
         lookup_random_url/0,
         lookup_random_url/1,
-        lookup_url/2,
+        lookup_url/1,
         lookup_url_by_search/1,
         lookup_urls_in_category/1,
         normal_url/2,
@@ -208,17 +208,12 @@ set_category_by_search(Category) :-
 set_category_by_search(Category, Term) :-
     must_be(atom, Category),
     must_be(string, Term),
-    writeln("Type Y to set or N to skip."),
+    writeln("Type Y to set, L to look up, or N to skip."),
     search_word_urls(Term, URLs),
     member(URL, URLs),
     url_category(URL, no),
     format("~w?\n", [URL]),
-    read_user_char(Low),
-    (
-        Low = 'y',
-        set_url_category(URL, Category);
-        fail
-    ),
+    set_category_by_search_check(URL, Category),
     fail.
 
 set_url_category(URL, Category) :-
@@ -262,6 +257,21 @@ search_word(Word, URL, Category, Title, Description) :-
     string_lower(Word, LowWord),
     atomics_to_string([LowURL, Category, LowTitle, LowDescription], ' | ', LowString),
     sub_string(LowString, _, _, _, LowWord).
+
+set_category_by_search_check(URL, Category) :-
+    read_user_char(Low),
+    (
+        % Yes, set the category.
+        Low = 'y',
+        set_url_category(URL, Category),
+        !;
+        % Not sure, so look up the URL and ask again.
+        Low = 'l',
+        lookup_url(URL),
+        set_category_by_search_check(URL, Category),
+        !;
+        true
+    ).
 
 update_url(URL, FinalURL, Code, Title, Description) :-
     must_be(string, URL),
