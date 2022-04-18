@@ -111,8 +111,14 @@ lookup_url_by_search(Word) :-
 
 lookup_urls_in_category(Category) :-
     must_be(atom, Category),
-    url_category(URL, Category),
-    lookup_url(URL),
+    setof(URL0, url_category(URL0, Category), URLs),
+    member(URL, URLs),
+    format("Open URL? ~w\n", [URL]),
+    read_user_char(Low),
+    (
+        Low = 'y', lookup_url(URL);
+        Low \= 'y'
+    ),
     fail.
 
 normal_url(URL, NormalURL) :-
