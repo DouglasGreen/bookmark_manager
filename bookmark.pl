@@ -89,9 +89,11 @@ open_url(URL) :-
     atom_string(TitleAtom, Title),
     atom_string(DescriptionAtom, Description),
     atom_string(FinalURLAtom, FinalURL),
-    writeln(FinalURL),
-    writeln(Title),
-    writeln(Description),
+    (
+        url_category(FinalURL, Category), !;
+        Category = no
+    ),
+    format("URL: ~w\nCategory: ~w\nTitle: ~w\n Description: ~w\n", [FinalURL, Category, Title, Description]),
     update_url(URL, FinalURL, Code, Title, Description),
     last_url_seen(FinalURL),
     www_open_url(FinalURL).
