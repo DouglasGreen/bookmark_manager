@@ -7,12 +7,12 @@ module(bookmark,
     [
         categories/1,
         delete_url/1,
-        lookup_random_url/0,
-        lookup_random_url/1,
-        lookup_url/1,
-        lookup_url_by_search/1,
-        lookup_urls_in_category/1,
         normal_url/2,
+        open_random_url/0,
+        open_random_url/1,
+        open_url/1,
+        open_url_by_search/1,
+        open_urls_in_category/1,
         print_all_url_categories/0,
         print_categories/0,
         print_url_hits/1,
@@ -44,7 +44,19 @@ delete_url(URL) :-
     \+ var(URL),
     retractall(url(URL, _, _, _, _, _, _)).
 
-lookup_url(URL) :-
+normal_url(URL, NormalURL) :-
+    uri_normalized(URL, URI),
+    uri_components(URI, uri_components(Scheme, Authority, OldPath, Search, Fragment)),
+    (
+        OldPath = '/',
+        NewPath = '',
+        !;
+        NewPath = OldPath
+    ),
+    uri_components(NormalURLAtom, uri_components(Scheme, Authority, NewPath, Search, Fragment)),
+    atom_string(NormalURLAtom, NormalURL).
+
+open_url(URL) :-
     must_be(string, URL),
     catch(
         http_open(URL, In, [status_code(Code), final_url(FinalURLAtom)]),
@@ -84,54 +96,42 @@ lookup_url(URL) :-
     last_url_seen(FinalURL),
     www_open_url(FinalURL).
 
-lookup_random_url :-
+open_random_url :-
     findall(URL, url(URL, _, _, _, _, _, _), URLs),
     random_permutation(URLs, Shuffled),
     member(URL, Shuffled),
     format("Trying ~w...\n", [URL]),
-    lookup_url(URL).
+    open_url(URL).
 
-lookup_random_url(Category) :-
+open_random_url(Category) :-
     must_be(atom, Category),
     findall(URL, url(URL, _, _, _, Category, _, _), URLs),
     random_permutation(URLs, Shuffled),
     member(URL, Shuffled),
     format("Trying ~w...\n", [URL]),
-    lookup_url(URL).
+    open_url(URL).
 
-lookup_url_by_search(Word) :-
+open_url_by_search(Word) :-
     must_be(string, Word),
     search_word_urls(Word, URLs),
     length(URLs, Length),
     (
         Length > 1, writeln("Multiple matches:"), print_url_search(Word), !;
         Length = 0, writeln("No matches"), !;
-        URLs = [URL], lookup_url(URL)
+        URLs = [URL], open_url(URL)
     ).
 
-lookup_urls_in_category(Category) :-
+open_urls_in_category(Category) :-
     must_be(atom, Category),
     setof(URL0, url_category(URL0, Category), URLs),
     member(URL, URLs),
     format("Open URL? ~w\n", [URL]),
     read_user_char(Low),
     (
-        Low = 'y', lookup_url(URL);
+        Low = 'y', open_url(URL);
         Low \= 'y'
     ),
     fail.
-
-normal_url(URL, NormalURL) :-
-    uri_normalized(URL, URI),
-    uri_components(URI, uri_components(Scheme, Authority, OldPath, Search, Fragment)),
-    (
-        OldPath = '/',
-        NewPath = '',
-        !;
-        NewPath = OldPath
-    ),
-    uri_components(NormalURLAtom, uri_components(Scheme, Authority, NewPath, Search, Fragment)),
-    atom_string(NormalURLAtom, NormalURL).
 
 print_all_url_categories :-
     categories(Categories),
@@ -273,7 +273,7 @@ set_category_by_search_check(URL, Category) :-
         !;
         % Not sure, so look up the URL and ask again.
         Low = 'l',
-        lookup_url(URL),
+        open_url(URL),
         set_category_by_search_check(URL, Category),
         !;
         true
