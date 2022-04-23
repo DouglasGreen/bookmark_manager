@@ -7,7 +7,7 @@ module(bookmark,
     [
         categories/1,
         delete_url/1,
-        delete_urls_in_category/2,
+        delete_urls_in_category/1,
         normal_url/2,
         open_random_url/0,
         open_random_url/1,
@@ -173,8 +173,11 @@ print_urls_in_category(Category) :-
 
 print_urls_in_category(Category, Limit) :-
     must_be(atom, Category),
+    must_be(integer, Limit),
     setof(URL, url_category(URL, Category), URLs),
-    length(List, Limit),
+    length(URLs, URLCount),
+    ActualLimit is min(Limit, URLCount),
+    length(List, ActualLimit),
     append(List, _, URLs),
     member(URL, List),
     writeln(URL),
