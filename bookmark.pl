@@ -7,6 +7,7 @@ module(bookmark,
     [
         categories/1,
         delete_url/1,
+        delete_urls_in_category/2,
         normal_url/2,
         open_random_url/0,
         open_random_url/1,
@@ -41,8 +42,21 @@ categories(Categories) :-
 
 delete_url(URL) :-
     must_be(string, URL),
-    \+ var(URL),
+    url(URL, _, _, _, _, _, _),
     retractall(url(URL, _, _, _, _, _, _)).
+
+delete_urls_in_category(Category) :-
+    must_be(atom, Category),
+    setof(URL0, url_category(URL0, Category), URLs),
+    member(URL, URLs),
+    format("Delete URL? ~w\n", [URL]),
+    open_url(URL),
+    read_user_char(Low),
+    (
+        Low = 'y', delete_url(URL);
+        Low \= 'y'
+    ),
+    fail.
 
 normal_url(URL, NormalURL) :-
     uri_normalized(URL, URI),
@@ -155,6 +169,16 @@ print_urls_in_category(Category) :-
     member(URL, URLs),
     writeln(URL),
     fail.
+
+print_urls_in_category(Category, Limit) :-
+    must_be(atom, Category),
+    setof(URL, url_category(URL, Category), URLs),
+    length(List, Limit),
+    append(List, _, URLs),
+    member(URL, List),
+    writeln(URL),
+    fail.
+
 
 print_url_hits(Floor) :-
     must_be(integer, Floor),
