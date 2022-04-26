@@ -141,7 +141,8 @@ open_url_by_search(Word) :-
 open_urls_in_category(Category) :-
     must_be(atom, Category),
     setof(URL0, url_category(URL0, Category), URLs),
-    member(URL, URLs),
+    random_permutation(URLs, Shuffled),
+    member(URL, Shuffled),
     format("Open URL? ~w\n", [URL]),
     read_user_char(Low),
     (
@@ -168,7 +169,8 @@ print_urls_in_category(Category) :-
     must_be(atom, Category),
     setof(URL, url_category(URL, Category), URLs),
     member(URL, URLs),
-    writeln(URL),
+    url(URL, Count, _, _, _, Title, _),
+    format("~w (Hits=~d, Title=~w)\n", [URL, Count, Title]),
     fail.
 
 print_urls_in_category(Category, Limit) :-
