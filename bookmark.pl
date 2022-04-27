@@ -101,8 +101,8 @@ open_url(URL) :-
         !;
         Description = "no"
     ),
-    atom_string(TitleAtom, Title),
-    atom_string(DescriptionAtom, Description),
+    normalize_space(string(Title), TitleAtom),
+    normalize_space(string(Description), DescriptionAtom),
     atom_string(FinalURLAtom, FinalURL),
     (
         url_category(FinalURL, Category), !;
