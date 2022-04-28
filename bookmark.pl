@@ -93,13 +93,13 @@ open_url(URL) :-
     (
         xpath(DOM, //title, element(title, _, [TitleAtom])),
         !;
-        Title = "no"
+        TitleAtom = 'no'
     ),
     (
         xpath(DOM, //meta(@name=description), element(meta, DescAttribs, _)),
         get_attrib(content, DescAttribs, DescriptionAtom),
         !;
-        Description = "no"
+        DescriptionAtom = 'no'
     ),
     normalize_space(string(Title), TitleAtom),
     normalize_space(string(Description), DescriptionAtom),
