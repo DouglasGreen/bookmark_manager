@@ -162,7 +162,9 @@ print_all_url_categories :-
 print_categories :-
     categories(Categories),
     member(Category, Categories),
-    writeln(Category),
+    setof(URL, url_category(URL, Category), URLs),
+    length(URLs, Length),
+    format("~w (~d URLs)\n", [Category, Length]),
     fail.
 
 print_urls_in_category(Category) :-
