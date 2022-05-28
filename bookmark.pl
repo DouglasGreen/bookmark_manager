@@ -5,29 +5,31 @@
 */
 module(bookmark,
     [
-        categories/1,
+        cats/1,
         delete_url/1,
-        delete_urls_in_category/1,
+        delete_urls_in_cat/1,
         normal_url/2,
         open_random_url/0,
         open_random_url/1,
         open_url/1,
+        open_url/2,
+        open_url_cat,
         open_url_by_search/1,
-        open_urls_in_category/1,
-        print_all_url_categories/0,
-        print_categories/0,
+        open_urls_in_cat/1,
+        print_all_url_cats/0,
+        print_cats/0,
         print_url_hits/1,
         print_url_search/1,
-        print_urls_in_category/1,
-        print_urls_in_category/2,
+        print_urls_in_cat/1,
+        print_urls_in_cat/2,
         remove_dupes/0,
-        rename_category/2,
+        rename_cat/2,
         save_file/0,
         search_word_urls/1,
-        set_url_category/2,
-        set_category_by_search/1,
-        set_category_by_search/2,
-        url_category/2,
+        set_url_cat/2,
+        set_cat_by_search/1,
+        set_cat_by_search/2,
+        url_cat/2,
         url_domain/2
     ]).
 
@@ -37,18 +39,18 @@ module(bookmark,
 
 :- dynamic last_url/1.
 
-categories(Categories) :-
-    findall(Category, url(_, _, _, _, Category, _, _), CatDupes),
-    sort(CatDupes, Categories).
+cats(Cats) :-
+    findall(Cat, url(_, _, _, _, Cat, _, _), CatDupes),
+    sort(CatDupes, Cats).
 
 delete_url(URL) :-
     must_be(string, URL),
     url(URL, _, _, _, _, _, _),
     retractall(url(URL, _, _, _, _, _, _)).
 
-delete_urls_in_category(Category) :-
-    must_be(atom, Category),
-    setof(URL0, url_category(URL0, Category), URLs),
+delete_urls_in_cat(Cat) :-
+    must_be(atom, Cat),
+    setof(URL0, url_cat(URL0, Cat), URLs),
     member(URL, URLs),
     format("Delete URL? ~w\n", [URL]),
     open_url(URL),
@@ -72,6 +74,9 @@ normal_url(URL, NormalURL) :-
     atom_string(NormalURLAtom, NormalURL).
 
 open_url(URL) :-
+    open_url(URL, _).
+
+open_url(URL, FinalURL) :-
     must_be(string, URL),
     catch(
         http_open(URL, In, [status_code(Code), final_url(FinalURLAtom)]),
@@ -105,13 +110,17 @@ open_url(URL) :-
     normalize_space(string(Description), DescriptionAtom),
     atom_string(FinalURLAtom, FinalURL),
     (
-        url_category(FinalURL, Category), !;
-        Category = no
+        url_cat(FinalURL, Cat), !;
+        Cat = no
     ),
-    format("URL: ~w\nCategory: ~w\nTitle: ~w\n Description: ~w\n", [FinalURL, Category, Title, Description]),
+    format("URL: ~w\nCategory: ~w\nTitle: ~w\n Description: ~w\n", [FinalURL, Cat, Title, Description]),
     update_url(URL, FinalURL, Code, Title, Description),
     last_url_seen(FinalURL),
     www_open_url(FinalURL).
+
+open_url_cat(URL, Cat) :-
+    open_url(URL, FinalURL),
+    set_url_cat(FinalURL, Cat).
 
 open_random_url :-
     findall(URL, url(URL, _, _, _, _, _, _), URLs),
@@ -120,9 +129,9 @@ open_random_url :-
     format("Trying ~w...\n", [URL]),
     open_url(URL).
 
-open_random_url(Category) :-
-    must_be(atom, Category),
-    findall(URL, url(URL, _, _, _, Category, _, _), URLs),
+open_random_url(Cat) :-
+    must_be(atom, Cat),
+    findall(URL, url(URL, _, _, _, Cat, _, _), URLs),
     random_permutation(URLs, Shuffled),
     member(URL, Shuffled),
     format("Trying ~w...\n", [URL]),
@@ -138,9 +147,9 @@ open_url_by_search(Word) :-
         URLs = [URL], open_url(URL)
     ).
 
-open_urls_in_category(Category) :-
-    must_be(atom, Category),
-    setof(URL0, url_category(URL0, Category), URLs),
+open_urls_in_cat(Cat) :-
+    must_be(atom, Cat),
+    setof(URL0, url_cat(URL0, Cat), URLs),
     random_permutation(URLs, Shuffled),
     member(URL, Shuffled),
     format("Open URL? ~w\n", [URL]),
@@ -151,34 +160,34 @@ open_urls_in_category(Category) :-
     ),
     fail.
 
-print_all_url_categories :-
-    categories(Categories),
-    member(Category, Categories),
-    format("\n~w:\n", [Category]),
-    print_urls_in_category(Category),
+print_all_url_cats :-
+    cats(Cats),
+    member(Cat, Cats),
+    format("\n~w:\n", [Cat]),
+    print_urls_in_cat(Cat),
     nl,
     fail.
 
-print_categories :-
-    categories(Categories),
-    member(Category, Categories),
-    setof(URL, url_category(URL, Category), URLs),
+print_cats :-
+    cats(Cats),
+    member(Cat, Cats),
+    setof(URL, url_cat(URL, Cat), URLs),
     length(URLs, Length),
-    format("~w (~d URLs)\n", [Category, Length]),
+    format("~w (~d URLs)\n", [Cat, Length]),
     fail.
 
-print_urls_in_category(Category) :-
-    must_be(atom, Category),
-    setof(URL, url_category(URL, Category), URLs),
+print_urls_in_cat(Cat) :-
+    must_be(atom, Cat),
+    setof(URL, url_cat(URL, Cat), URLs),
     member(URL, URLs),
     url(URL, Count, _, _, _, Title, _),
     format("~w (Hits=~d, Title=~w)\n", [URL, Count, Title]),
     fail.
 
-print_urls_in_category(Category, Limit) :-
-    must_be(atom, Category),
+print_urls_in_cat(Cat, Limit) :-
+    must_be(atom, Cat),
     must_be(integer, Limit),
-    setof(URL, url_category(URL, Category), URLs),
+    setof(URL, url_cat(URL, Cat), URLs),
     length(URLs, URLCount),
     ActualLimit is min(Limit, URLCount),
     length(List, ActualLimit),
@@ -200,37 +209,37 @@ print_url_search(Word) :-
     search_word_urls(Word, URLs),
     sort(URLs, Sorted),
     member(URL, Sorted),
-    url_category(URL, Category),
-    format("~w (~w)\n", [URL, Category]),
+    url_cat(URL, Cat),
+    format("~w (~w)\n", [URL, Cat]),
     fail.
 
 remove_dupes :-
-    url(URL, Count1, Code1, Date1, Category1, Title1, Description1),
-    url(URL, Count2, _, Date2, Category2, _, _),
-    [Count1, Date1, Category1] \= [Count2, Date2, Category2],
+    url(URL, Count1, Code1, Date1, Cat1, Title1, Description1),
+    url(URL, Count2, _, Date2, Cat2, _, _),
+    [Count1, Date1, Cat1] \= [Count2, Date2, Cat2],
     writeln(URL),
     delete_url(URL),
     NewCount is Count1 + Count2,
-    assertz(url(URL, NewCount, Code1, Date1, Category1, Title1, Description1)),
+    assertz(url(URL, NewCount, Code1, Date1, Cat1, Title1, Description1)),
     fail.
 
 remove_dupes.
 
-rename_category(OldName, NewName) :-
+rename_cat(OldName, NewName) :-
     must_be(atom, OldName),
     must_be(atom, NewName),
     retract(url(URL, Count, Code, Date, OldName, Title, Description)),
     assertz(url(URL, Count, Code, Date, NewName, Title, Description)),
     fail.
 
-rename_category(_, _) :-
+rename_cat(_, _) :-
     true.
 
 save_file :-
     tell('url.pl'),
     writeln(":- module(url, [url/7])."),
     nl,
-    writeln("% url(URL, Count, Code, Date, Category, Title, Description)."),
+    writeln("% url(URL, Count, Code, Date, Cat, Title, Description)."),
     nl,
     listing(url),
     told.
@@ -238,32 +247,32 @@ save_file :-
 search_word_urls(Word, URLs) :-
     must_be(string, Word),
     must_be(var, URLs),
-    setof(URL, Description^Title^Category^Word^search_word(Word, URL, Category, Title, Description), URLs).
+    setof(URL, Description^Title^Cat^Word^search_word(Word, URL, Cat, Title, Description), URLs).
 
-set_category_by_search(Category) :-
-    must_be(atom, Category),
-    atom_string(Category, Term),
-    set_category_by_search(Category, Term).
+set_cat_by_search(Cat) :-
+    must_be(atom, Cat),
+    atom_string(Cat, Term),
+    set_cat_by_search(Cat, Term).
 
-set_category_by_search(Category, Term) :-
-    must_be(atom, Category),
+set_cat_by_search(Cat, Term) :-
+    must_be(atom, Cat),
     must_be(string, Term),
     writeln("Type Y to set, L to look up, or N to skip."),
     search_word_urls(Term, URLs),
     member(URL, URLs),
-    url_category(URL, no),
+    url_cat(URL, no),
     format("~w?\n", [URL]),
-    set_category_by_search_check(URL, Category),
+    set_cat_by_search_check(URL, Cat),
     fail.
 
-set_url_category(URL, Category) :-
+set_url_cat(URL, Cat) :-
     must_be(string, URL),
-    must_be(atom, Category),
+    must_be(atom, Cat),
     retract(url(URL, Count, Code, Date, _, Title, Description)),
-    assertz(url(URL, Count, Code, Date, Category, Title, Description)).
+    assertz(url(URL, Count, Code, Date, Cat, Title, Description)).
 
-url_category(URL, Category) :-
-    url(URL, _, _, _, Category, _, _).
+url_cat(URL, Cat) :-
+    url(URL, _, _, _, Cat, _, _).
 
 url_domain(URL, Domain) :-
     url(URL, _, _, _, _, _, _),
@@ -288,27 +297,27 @@ read_user_char(Low) :-
     char_code(Char, Code),
     downcase_atom(Char, Low).
 
-search_word(Word, URL, Category, Title, Description) :-
+search_word(Word, URL, Cat, Title, Description) :-
     must_be(string, Word),
-    url(URL, _, _, _, Category, Title, Description),
+    url(URL, _, _, _, Cat, Title, Description),
     string_lower(URL, LowURL),
     string_lower(Title, LowTitle),
     string_lower(Description, LowDescription),
     string_lower(Word, LowWord),
-    atomics_to_string([LowURL, Category, LowTitle, LowDescription], ' | ', LowString),
+    atomics_to_string([LowURL, Cat, LowTitle, LowDescription], ' | ', LowString),
     sub_string(LowString, _, _, _, LowWord).
 
-set_category_by_search_check(URL, Category) :-
+set_cat_by_search_check(URL, Cat) :-
     read_user_char(Low),
     (
-        % Yes, set the category.
+        % Yes, set the cat.
         Low = 'y',
-        set_url_category(URL, Category),
+        set_url_cat(URL, Cat),
         !;
         % Not sure, so look up the URL and ask again.
         Low = 'l',
         open_url(URL),
-        set_category_by_search_check(URL, Category),
+        set_cat_by_search_check(URL, Cat),
         !;
         true
     ).
@@ -320,11 +329,11 @@ update_url(URL, FinalURL, Code, Title, Description) :-
     must_be(string, Title),
     must_be(string, Description),
     (
-        url(URL, OldCount, _, _, Category, _, _),
+        url(URL, OldCount, _, _, Cat, _, _),
         NewCount is OldCount + 1,
         !;
         NewCount is 1,
-        Category = no
+        Cat = no
     ),
     date(Date),
     normal_url(FinalURL, NormalURL),
@@ -339,4 +348,4 @@ update_url(URL, FinalURL, Code, Title, Description) :-
         !;
         true
     ),
-    assertz(url(NormalURL, NewCount, Code, Date, Category, Title, Description)).
+    assertz(url(NormalURL, NewCount, Code, Date, Cat, Title, Description)).
